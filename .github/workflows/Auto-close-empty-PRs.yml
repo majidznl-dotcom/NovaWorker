@@ -1,0 +1,61 @@
+name: Auto-close empty PRs
+
+permissions:
+  issues: write
+  pull-requests: write
+
+on:
+  pull_request_target:
+    # Check the PR description only when it is opened, reopened or marked ready for review
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+
+jobs:
+  check-pr:
+    name: Close PRs with empty or short descriptions
+    runs-on: ubuntu-latest
+    # Draft PRs are skipped until the author marks them ready
+    if: ${{ !github.event.pull_request.draft }}
+
+    steps:
+      - name: Close PR when description is empty or too short
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+
+            // Strip whitespace and HTML comments so a PR that only looks filled in is still caught
+            const description = (pr.body || '')
+              .replace(/<!--[\s\S]*?-->/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+
+            const descriptionLength = Array.from(description).length;
+            core.info(`Description length: ${descriptionLength}`);
+
+            // More than 8 characters counts as a basic description
+            if (descriptionLength > 8) {
+              core.info('Description is long enough. No action needed.');
+              return;
+            }
+
+            // Empty or too short: leave a note, then close the PR
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: [
+                'This PR was closed automatically because its description is empty or too short.',
+                '',
+                'Please describe what you changed and why, then open the PR again.',
+              ].join('\n'),
+            });
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              state: 'closed',
+            });
