@@ -10,4 +10,4 @@ keep_vars = true
 
 #[[kv_namespaces]]
 #binding = "KV"			# KV binding name (do not rename)
-#id = ""				# KV database id
+#id = "0071f23cbc8a4ef4989a0f63aa1dd3d0"				# KV database id
